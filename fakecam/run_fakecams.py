@@ -67,18 +67,19 @@ def publisher_cmd(cam: str, video: Path, cfg: dict) -> list[str]:
 
 
 def owns_pid(pid: int) -> bool:
-    """Only kill a PID that really is one of our ffmpeg publishers (F3: PID reuse)."""
+    """Only kill a PID that really is one of our ffmpeg publishers (F3: PID reuse).
+
+    Cross-platform via psutil — works on macOS/Linux/Windows alike. If psutil is
+    unavailable, fail CLOSED (return False): never kill an unverified process.
+    """
     try:
-        with open(f"/proc/{pid}/cmdline", "rb") as f:  # Linux path; macOS fallback below
-            return b"ffmpeg" in f.read()
-    except OSError:
-        pass
+        import psutil
+    except ImportError:  # pragma: no cover — deps installed via pyproject
+        print("psutil missing: refusing to kill unverified pids", file=sys.stderr)
+        return False
     try:
-        out = subprocess.run(
-            ["ps", "-p", str(pid), "-o", "command="], capture_output=True, text=True, check=False
-        ).stdout
-        return "ffmpeg" in out
-    except OSError:
+        return "ffmpeg" in psutil.Process(pid).name().lower()
+    except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
         return False
 
 
