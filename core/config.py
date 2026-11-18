@@ -28,11 +28,13 @@ def load(path: str = "config/config.yaml") -> dict[str, Any]:
         if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
             raise ValueError(f"{key} must be a positive integer, got {value!r}")
 
-    host, port = cfg.get("rtsp_host"), cfg.get("rtsp_port")
+    host = cfg.get("rtsp_host")
     if not isinstance(host, str) or not host:
         raise ValueError("rtsp_host must be a non-empty string")
-    if not isinstance(port, int) or isinstance(port, bool) or not 1 <= port <= 65535:
-        raise ValueError(f"rtsp_port must be 1-65535, got {port!r}")
+    for key in ("rtsp_port", "hls_port", "rtmp_port", "webrtc_port"):
+        port = cfg.get(key)
+        if not isinstance(port, int) or isinstance(port, bool) or not 1 <= port <= 65535:
+            raise ValueError(f"{key} must be 1-65535, got {port!r}")
 
     rtsp_path = cfg.get("rtsp_path")
     if not isinstance(rtsp_path, str) or "{cam}" not in rtsp_path:

@@ -114,6 +114,9 @@ platform/
 ```yaml
 rtsp_host: "127.0.0.1"        # bind/reach loopback (§7) — đổi chỉ khi mở LAN có lý do trong PR
 rtsp_port: 8554
+hls_port: 8888                # trình duyệt — multiview đọc từ đây, không hardcode
+rtmp_port: 1935
+webrtc_port: 8889
 rtsp_path: "live/{cam}"       # URL đầy đủ = rtsp://{rtsp_host}:{rtsp_port}/{rtsp_path}
 cameras: [cam01, cam02, cam03, cam04]
 pre: 10          # giây trước cảnh báo

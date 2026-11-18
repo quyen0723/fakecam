@@ -1,6 +1,9 @@
 # Single source of truth — see docs/CODE_STANDARD.md §1 and playbook §1.4
 rtsp_host: "127.0.0.1"           # bind/reach loopback (§7); open LAN only with PR reason
 rtsp_port: 8554
+hls_port: 8888
+rtmp_port: 1935
+webrtc_port: 8889
 rtsp_path: "live/{cam}"
 cameras: [cam01, cam02, cam03, cam04]
 pre: 10                          # seconds before alert

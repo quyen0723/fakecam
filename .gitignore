@@ -9,3 +9,4 @@ auto.key
 auto.crt
 *.pem
 .bcc-cache/
+scripts/mediamtx.yml
