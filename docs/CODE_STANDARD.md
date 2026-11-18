@@ -41,16 +41,37 @@ Exceeding a limit = split the module (exception needs a note in the PR body).
 - Tests: pytest for pure logic (config parsing, cut_clip segment selection); no test for
   subprocess plumbing (covered by soak instead).
 
-## 5. Commits
+## 5. Branches & commits
 
-- Short, clear English: `<type>: <subject>` (`feat`, `fix`, `docs`, `test`, `chore`).
-- One logical change per commit; the playbook changes before code lands
-  (design change ⇒ update `docs/playbook_platform.md` first).
-- Never commit: `data/`, `videos/*.mp4`, `.env`, secrets.
+- **`main` is protected: never commit/push directly.** All work happens on
+  `dev/<feature>` branches and lands via PR review.
+- Author: **Quiniu**. Commit/PR messages: short, clear, professional English —
+  `<type>: <subject>` (`feat`, `fix`, `docs`, `test`, `chore`).
+- **No AI/tool attribution in commits, PRs or code comments.** History reads as if
+  written by the team, nothing else.
+- One logical change per commit; design change ⇒ update `docs/playbook_platform.md` first.
+- Never commit: `data/`, `videos/*.mp4`, `.env`, secrets, credentials of any kind.
+- PR checklist (body must state): purpose, what changed, pass-criteria executed + output,
+  quality checks run (ruff/pytest), security impact if touching network/processes/files.
 
-## 6. Process
+## 6. Quality gate — every code change, no exceptions
 
-- Branch: `main` (stable, passes its week's pass-criteria) + `dev/<feature>` branches.
-- Small PRs: ≤ 300 diff lines; self-review before pushing.
-- Quality gate before merge: ruff + pytest green + the step's pass-criteria executed manually
-  and pasted into the PR body.
+Run before every commit (not before merge):
+```
+.venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/pytest -q
+```
+Failing any step = no commit. Pass-criteria of the current week/test executed manually.
+
+## 7. Security non-negotiables
+
+- **No secrets in code, config or logs.** Tokens/credentials via environment variables only;
+  `.env` is gitignored (never force-added).
+- RTSP/HTTP endpoints bind to `127.0.0.1` by default; anything exposed on the LAN requires
+  an explicit note in the PR + a reason.
+- Child processes (`ffmpeg`) are launched from fixed argv arrays — no shell interpolation,
+  no f-string command assembly from user/UI input.
+- Camera/video filenames from UI/API are validated against a strict pattern before use
+  (no path traversal: reject `/`, `..`, absolute paths).
+- Upload/uploaded-video size and extension validated; files land only under `videos/`.
+- Every PR that touches network, subprocesses or files must state security impact
+  (per §5 PR checklist).
