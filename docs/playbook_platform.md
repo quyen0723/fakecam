@@ -163,9 +163,7 @@ from core.contract import FrameMeta
 
 
 class CameraReader:
-    def __init__(
-        self, camera_id, url, log_dir="data/logs", stall_s=5.0, max_backoff=10.0
-    ):
+    def __init__(self, camera_id, url, log_dir="data/logs", stall_s=5.0, max_backoff=10.0):
         self.id, self.url = camera_id, url
         self.stall_s, self.max_backoff = stall_s, max_backoff
         self._cv = threading.Condition()
@@ -302,11 +300,7 @@ def prune(cam, keep_s=600, rec_dir="data/rec"):
 
 def cut_clip(cam, ts_frame, pre, post, out: Path, rec_dir="data/rec") -> bool:
     t0, t1 = ts_frame - pre, ts_frame + post
-    segs = sorted(
-        p
-        for p in (Path(rec_dir) / cam).glob("*.ts")
-        if t0 - SEG_S <= _start_ts(p) <= t1
-    )
+    segs = sorted(p for p in (Path(rec_dir) / cam).glob("*.ts") if t0 - SEG_S <= _start_ts(p) <= t1)
     # Kiểm tra đủ đoạn (rủi ro "tên segment trùng" — hai đoạn sinh cùng 1 giây bị ghi đè):
     # thiếu ≥ 2 đoạn so với kỳ vọng (pre+post)/SEG_S → ghi log, clip vẫn cắt (best effort).
     missing = (pre + post) // SEG_S - len(segs)
@@ -314,9 +308,7 @@ def cut_clip(cam, ts_frame, pre, post, out: Path, rec_dir="data/rec") -> bool:
     if missing >= 2:
         gap_log.parent.mkdir(parents=True, exist_ok=True)
         with open(gap_log, "a", newline="") as f:
-            csv.writer(f).writerow(
-                [time.strftime("%F %T"), cam, int(ts_frame), str(missing)]
-            )
+            csv.writer(f).writerow([time.strftime("%F %T"), cam, int(ts_frame), str(missing)])
     if not segs:
         return False
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -515,18 +507,14 @@ def feed():
             with open("data/metrics/ui_seen.csv", "a", newline="") as m:
                 csv.writer(m).writerow([a["alert_id"], f"{time.time():.3f}"])  # ts_ui
         with st.container(border=True):
-            st.write(
-                f"**{a['camera_id']}** · {a['event_type']} · {a['confidence']:.2f}"
-            )
+            st.write(f"**{a['camera_id']}** · {a['event_type']} · {a['confidence']:.2f}")
             clip = Path("data/clips") / a["camera_id"] / f"{a['alert_id']}.mp4"
             st.video(str(clip)) if clip.exists() else st.caption("Đang cắt clip…")
             c1, c2 = st.columns(2)
             for col, label in ((c1, "Đúng"), (c2, "Sai")):
                 if col.button(label, key=f"{a['alert_id']}_{label}"):
                     with open("data/reviews.csv", "a", newline="") as r:
-                        csv.writer(r).writerow(
-                            [a["alert_id"], label, f"{time.time():.3f}"]
-                        )
+                        csv.writer(r).writerow([a["alert_id"], label, f"{time.time():.3f}"])
 
 
 feed()
@@ -549,9 +537,7 @@ def supervise(procs: dict[str, dict], poll_s=2.0, restart_backoff_max=60):
     Ý nghĩa của "source": số restart được đếm riêng theo nguồn để tính uptime —
     lỗi do pilot KHÔNG tính vào uptime của Platform (xem mục 5.3)."""
     RESTART_LOG.parent.mkdir(parents=True, exist_ok=True)
-    info = {
-        n: {"p": None, "next_ok": 0.0, "backoff": 1.0, **v} for n, v in procs.items()
-    }
+    info = {n: {"p": None, "next_ok": 0.0, "backoff": 1.0, **v} for n, v in procs.items()}
     while True:
         for name, it in info.items():
             if it["p"] is None or it["p"].poll() is not None:

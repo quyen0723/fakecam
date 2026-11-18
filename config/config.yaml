@@ -1,5 +1,7 @@
-# Single source of truth — see docs/CODE_STANDARD.md §1
-rtsp_path: "live/{cam}"          # full URL = rtsp://localhost:8554/live/{cam}
+# Single source of truth — see docs/CODE_STANDARD.md §1 and playbook §1.4
+rtsp_host: "127.0.0.1"           # bind/reach loopback (§7); open LAN only with PR reason
+rtsp_port: 8554
+rtsp_path: "live/{cam}"
 cameras: [cam01, cam02, cam03, cam04]
 pre: 10                          # seconds before alert
 post: 10                         # seconds after alert
