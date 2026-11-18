@@ -111,7 +111,9 @@ platform/
 ### 1.4 `config.yaml` mẫu — nguồn duy nhất của các con số và đường dẫn
 
 ```yaml
-rtsp_path: "live/{cam}"        # URL đầy đủ = rtsp://localhost:8554/live/{cam}
+rtsp_host: "127.0.0.1"        # bind/reach loopback (§7) — đổi chỉ khi mở LAN có lý do trong PR
+rtsp_port: 8554
+rtsp_path: "live/{cam}"       # URL đầy đủ = rtsp://{rtsp_host}:{rtsp_port}/{rtsp_path}
 cameras: [cam01, cam02, cam03, cam04]
 pre: 10          # giây trước cảnh báo
 post: 10         # giây sau cảnh báo
@@ -122,12 +124,12 @@ cooldown_s: 30   # lưới chặn trùng ở Platform (xem mục 3.3)
 
 Quy tắc khi nạp config:
 
-1. **`camera_id` phải khớp mẫu `^cam\d{2}$`.** Thư mục Windows không phân biệt hoa/thường, nhưng đường dẫn RTSP của MediaMTX thì có — sai tên là mất clip âm thầm. Kiểm tra ngay lúc nạp config, sai thì thoát kèm thông báo.
-2. **Không hardcode URL ở bất kỳ module nào.** `run_fakecams`, recorder, `CameraReader`, clipper đều nhận từ `rtsp_path`. URL chỉ tồn tại ở một chỗ.
+1. **`camera_id` phải khớp mẫu `^cam\d{2}$`.** Thư mục Windows không phân biệt hoa/thường, nhưng đường dẫn RTSP của MediaMTX thì có — sai tên là mất clip âm thầm. Kiểm tra ngay lúc nạp config, sai thì thoát kèm thông báo. Nạp config còn kiểm: `rtsp_path` chứa `{cam}`, `rtsp_port` 1–65535, các số `pre/post/seg_s/keep_s/cooldown_s` > 0.
+2. **Không hardcode URL/port ở bất kỳ module nào.** `run_fakecams`, recorder, `CameraReader`, clipper dùng `rtsp_host` + `rtsp_port` + `rtsp_path` từ config. URL chỉ tồn tại ở một chỗ. *(Cập nhật 19/11 sau review: port trước đây hardcode `8554` trong code là vi phạm — đã chuyển sang config.)*
 3. **RTSP transport đặt tường minh**, không phụ thuộc mặc định của OpenCV: đặt
    `os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"` **trước `import cv2`** và dùng `-rtsp_transport tcp` cho mọi dòng lệnh FFmpeg. Đây là chọn cho nhất quán, không phải sửa lỗi UDP.
 4. Dùng `shutil.disk_usage` để lấy `% đĩa trống` cho chính sách đĩa của Clipper (mục 3.2) và `soak_monitor` (mục 5.2).
-5. **MediaMTX ≥ 1.21 yêu cầu khai báo path tường minh** (`paths:` trong config) — path không khai báo thì push bị từ chối ("Server returned 400 Bad Request", log: *path is not configured*; đã gặp thật khi dựng 4 camera 18/11). File `scripts/mediamtx.yml` sinh theo `config.yaml` — thêm/xoá camera là đổi cả hai. *(Bổ sung 18/11 sau khi dựng thành công.)*
+5. **MediaMTX ≥ 1.21 yêu cầu khai báo path tường minh** (`paths:` trong config) — path không khai báo thì push bị từ chối ("Server returned 400 Bad Request", log: *path is not configured*; đã gặp thật khi dựng 4 camera 18/11). **`scripts/mediamtx.yml` KHÔNG được sửa tay — sinh bằng `python -m scripts.gen_mediamtx` từ `config.yaml`** (chỉ một nguồn sự thật; review 19/11: file tĩnh hai nguồn là rủi ro quên đồng bộ). *(Bổ sung 18/11, cập nhật 19/11.)*
 6. **Tin số liệu p95 chỉ sau phép đo drawtext** (mục 5.1): OpenCV `cap.read()` có thể trả frame từ buffer (hộp thử 18/11: stream 15 fps đọc ra ~25 frame/s) — FPS theo vòng loop không phải bằng tốc độ phát thật. Chạy phép đo watermark `drawtext` (20 mẫu, mục 5.1) trước khi tin `frame_latency.csv`. *(Bổ sung 18/11.)*
 
 ---
