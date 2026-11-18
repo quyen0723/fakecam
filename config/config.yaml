@@ -1,0 +1,8 @@
+# Single source of truth — see docs/CODE_STANDARD.md §1
+rtsp_path: "live/{cam}"          # full URL = rtsp://localhost:8554/live/{cam}
+cameras: [cam01, cam02, cam03, cam04]
+pre: 10                          # seconds before alert
+post: 10                         # seconds after alert
+seg_s: 2                         # ring segment length on disk
+keep_s: 600                      # keep recorded segments 10 min
+cooldown_s: 30                   # platform-side dedup window
