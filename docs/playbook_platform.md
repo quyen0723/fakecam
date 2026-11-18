@@ -7,6 +7,7 @@
 >
 > Code bên dưới là **khung tham khảo, chưa chạy thử trên máy của nhóm**. Các con số đánh dấu *(đề xuất)* cần trưởng dự án hoặc thầy xác nhận.
 
+> **Changelog 19/11/2026**: bug §3.1 `read()` trả (None, None) khi chưa có frame (`_fid=0 > -1` true trước frame đầu) — guard `self._meta is not None`; tìm thấy bằng live test DummyPilot.
 > **Changelog 18/11/2026** (sửa theo 2 vòng review — backup bản trước: `playbook_platform.md.20261118.bak`):
 > thêm mục 1.4 `config.yaml` + quy tắc nạp config; `CameraReader` log khung hình đầu tiên thay vì lúc mở kết nối, RTSP transport tường minh; `emit_alert` thêm lưới chặn trùng ở Platform; `run_pilot` dùng `LatRecorder` + config; `cut_clip` kiểm tra đủ đoạn; clipper nạp config + chính sách đĩa (>80% dọn mạnh, >95% dừng cắt clip) + dọn clip (synthetic dọn riêng); `supervisor.py` — restart backoff, đếm theo nguồn; bảng rủi ro thêm NTP; runbook 72 giờ; uptime tính riêng Platform/pilot; tuần 1 bổ sung bài test segment trùng. **Không đổi** `cut_clip` về điều kiện chọn segment (giữ `<= t1`, trong dung sai ±2 giây đã chốt).
 
@@ -183,8 +184,10 @@ class CameraReader:
     def read(self, after_id=-1, timeout=1.0):
         """Trả (frame, meta) MỚI NHẤT có frame_id > after_id, hoặc None nếu hết timeout."""
         with self._cv:
-            self._cv.wait_for(lambda: self._fid > after_id, timeout)
-            if self._fid <= after_id:
+            # _fid khởi tạo = 0 nên `_fid > -1` là TRUE cả khi CHƯA có frame
+            # (bug phát hiện 19/11 bằng live test: read() trả (None, None) → crash)
+            self._cv.wait_for(lambda: self._meta is not None and self._fid > after_id, timeout)
+            if self._meta is None or self._fid <= after_id:
                 return None
             return self._frame, self._meta
 
