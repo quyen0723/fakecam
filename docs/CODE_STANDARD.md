@@ -75,3 +75,15 @@ Failing any step = no commit. Pass-criteria of the current week/test executed ma
 - Upload/uploaded-video size and extension validated; files land only under `videos/`.
 - Every PR that touches network, subprocesses or files must state security impact
   (per §5 PR checklist).
+
+## 8. TLS keys (auto.crt / auto.key)
+
+- These are MediaMTX auto-generated per-machine TLS pairs (ECDSA P-256, self-signed,
+  CN=mediamtx) — created in the process working directory each time a TLS listener is
+  enabled with the `auto` setting. They exist per machine and are NEVER portable.
+- Never commit them (already ignored: `auto.key`, `auto.crt`, `*.pem` — see §7).
+- Current PoC binds loopback only and runs no TLS listener: keys present on disk are
+  orphans from earlier runs; safe to leave or delete — they regenerate on demand.
+- When HTTPS becomes required (e.g. browser getUserMedia for user-camera streaming),
+  let MediaMTX regenerate the pair on that machine; do not copy keys between machines.
+  Self-signed certs are acceptable for LAN demos only.
