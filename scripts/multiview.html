@@ -25,7 +25,7 @@
   for (const cam of cams) {
     const cell = document.createElement("div");
     cell.className = "cell";
-    cell.innerHTML = `<span class="label">${cam}</span><video muted autoplay playsinline></video>`;
+    cell.innerHTML = `<span class="label">${cam}</span><video muted autoplay playsinline preload="none"></video>`;
     grid.appendChild(cell);
     const v = cell.querySelector("video");
     // HLS only plays natively in Safari; Chrome/Firefox need hls.js
@@ -33,14 +33,31 @@
       v.src = `http://127.0.0.1:8888/live/${cam}/index.m3u8`;
     } else if (window.Hls && Hls.isSupported()) {
       const hls = new Hls();
-      hls.loadSource(`http://127.0.0.1:8888/live/${cam}/index.m3u8`);
-      hls.attachMedia(v);
-      hls.on(Hls.Events.ERROR, (_, d) => {
-        if (d.fatal) cell.querySelector("span").textContent = `${cam} — stream error`;
-      });
+    } else if (window.Hls && Hls.isSupported()) {
+      // Stagger + retry: 4 simultaneous HLS starts can drop streams at startup.
+      const label = cell.querySelector("span");
+      setTimeout(() => start(cam, v, label, 1), (cams.indexOf(cam)) * 1500);
     } else {
       cell.innerHTML = `<span class="err">browser không hỗ trợ HLS</span>`;
     }
+  }
+
+  function start(cam, v, label, attempt) {
+    label.textContent = `${cam} — loading`;
+    const hls = new Hls();
+    hls.loadSource(`http://127.0.0.1:8888/live/${cam}/index.m3u8`);
+    hls.attachMedia(v);
+    hls.on(Hls.Events.ERROR, (_, d) => {
+      if (!d.fatal) return;
+      hls.destroy();
+      if (attempt < 3) {
+        label.textContent = `${cam} — retry ${attempt}/3`;
+        setTimeout(() => start(cam, v, label, attempt + 1), 2000);
+      } else {
+        label.textContent = `${cam} — stream error (chạy read_smoke để kiểm tra server)`;
+      }
+    });
+    hls.on(Hls.Events.PLAYING, () => { label.textContent = cam; });
   }
 </script>
 </body>
