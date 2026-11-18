@@ -36,3 +36,10 @@ powershell -File scripts\prepare_videos.ps1
 Notes: everything binds 127.0.0.1 only (CODE_STANDARD §7). `scripts/mediamtx.yml` is
 generated from `config/config.yaml` — do not edit by hand. `data/` and `videos/*.mp4`
 are gitignored.
+
+## TLS note (auto.crt/auto.key)
+
+`auto.crt` / `auto.key` are MediaMTX-generated per-machine TLS pairs — never committed,
+never copied between machines. The current PoC runs loopback without TLS, so any such
+files on disk are local leftovers; they regenerate automatically when a TLS listener
+is first needed (per CODE_STANDARD §8).
