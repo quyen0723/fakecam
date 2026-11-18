@@ -111,7 +111,9 @@ platform/
 ### 1.4 `config.yaml` mẫu — nguồn duy nhất của các con số và đường dẫn
 
 ```yaml
-rtsp_path: "live/{cam}"        # URL đầy đủ = rtsp://localhost:8554/live/{cam}
+rtsp_host: "127.0.0.1"        # bind/reach loopback (§7) — đổi chỉ khi mở LAN có lý do trong PR
+rtsp_port: 8554
+rtsp_path: "live/{cam}"       # URL đầy đủ = rtsp://{rtsp_host}:{rtsp_port}/{rtsp_path}
 cameras: [cam01, cam02, cam03, cam04]
 pre: 10          # giây trước cảnh báo
 post: 10         # giây sau cảnh báo
@@ -122,12 +124,12 @@ cooldown_s: 30   # lưới chặn trùng ở Platform (xem mục 3.3)
 
 Quy tắc khi nạp config:
 
-1. **`camera_id` phải khớp mẫu `^cam\d{2}$`.** Thư mục Windows không phân biệt hoa/thường, nhưng đường dẫn RTSP của MediaMTX thì có — sai tên là mất clip âm thầm. Kiểm tra ngay lúc nạp config, sai thì thoát kèm thông báo.
-2. **Không hardcode URL ở bất kỳ module nào.** `run_fakecams`, recorder, `CameraReader`, clipper đều nhận từ `rtsp_path`. URL chỉ tồn tại ở một chỗ.
+1. **`camera_id` phải khớp mẫu `^cam\d{2}$`.** Thư mục Windows không phân biệt hoa/thường, nhưng đường dẫn RTSP của MediaMTX thì có — sai tên là mất clip âm thầm. Kiểm tra ngay lúc nạp config, sai thì thoát kèm thông báo. Nạp config còn kiểm: `rtsp_path` chứa `{cam}`, `rtsp_port` 1–65535, các số `pre/post/seg_s/keep_s/cooldown_s` > 0.
+2. **Không hardcode URL/port ở bất kỳ module nào.** `run_fakecams`, recorder, `CameraReader`, clipper dùng `rtsp_host` + `rtsp_port` + `rtsp_path` từ config. URL chỉ tồn tại ở một chỗ. *(Cập nhật 19/11 sau review: port trước đây hardcode `8554` trong code là vi phạm — đã chuyển sang config.)*
 3. **RTSP transport đặt tường minh**, không phụ thuộc mặc định của OpenCV: đặt
    `os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"` **trước `import cv2`** và dùng `-rtsp_transport tcp` cho mọi dòng lệnh FFmpeg. Đây là chọn cho nhất quán, không phải sửa lỗi UDP.
 4. Dùng `shutil.disk_usage` để lấy `% đĩa trống` cho chính sách đĩa của Clipper (mục 3.2) và `soak_monitor` (mục 5.2).
-5. **MediaMTX ≥ 1.21 yêu cầu khai báo path tường minh** (`paths:` trong config) — path không khai báo thì push bị từ chối ("Server returned 400 Bad Request", log: *path is not configured*; đã gặp thật khi dựng 4 camera 18/11). File `scripts/mediamtx.yml` sinh theo `config.yaml` — thêm/xoá camera là đổi cả hai. *(Bổ sung 18/11 sau khi dựng thành công.)*
+5. **MediaMTX ≥ 1.21 yêu cầu khai báo path tường minh** (`paths:` trong config) — path không khai báo thì push bị từ chối ("Server returned 400 Bad Request", log: *path is not configured*; đã gặp thật khi dựng 4 camera 18/11). **`scripts/mediamtx.yml` KHÔNG được sửa tay — sinh bằng `python -m scripts.gen_mediamtx` từ `config.yaml`** (chỉ một nguồn sự thật; review 19/11: file tĩnh hai nguồn là rủi ro quên đồng bộ). *(Bổ sung 18/11, cập nhật 19/11.)*
 6. **Tin số liệu p95 chỉ sau phép đo drawtext** (mục 5.1): OpenCV `cap.read()` có thể trả frame từ buffer (hộp thử 18/11: stream 15 fps đọc ra ~25 frame/s) — FPS theo vòng loop không phải bằng tốc độ phát thật. Chạy phép đo watermark `drawtext` (20 mẫu, mục 5.1) trước khi tin `frame_latency.csv`. *(Bổ sung 18/11.)*
 
 ---
@@ -161,9 +163,7 @@ from core.contract import FrameMeta
 
 
 class CameraReader:
-    def __init__(
-        self, camera_id, url, log_dir="data/logs", stall_s=5.0, max_backoff=10.0
-    ):
+    def __init__(self, camera_id, url, log_dir="data/logs", stall_s=5.0, max_backoff=10.0):
         self.id, self.url = camera_id, url
         self.stall_s, self.max_backoff = stall_s, max_backoff
         self._cv = threading.Condition()
@@ -300,11 +300,7 @@ def prune(cam, keep_s=600, rec_dir="data/rec"):
 
 def cut_clip(cam, ts_frame, pre, post, out: Path, rec_dir="data/rec") -> bool:
     t0, t1 = ts_frame - pre, ts_frame + post
-    segs = sorted(
-        p
-        for p in (Path(rec_dir) / cam).glob("*.ts")
-        if t0 - SEG_S <= _start_ts(p) <= t1
-    )
+    segs = sorted(p for p in (Path(rec_dir) / cam).glob("*.ts") if t0 - SEG_S <= _start_ts(p) <= t1)
     # Kiểm tra đủ đoạn (rủi ro "tên segment trùng" — hai đoạn sinh cùng 1 giây bị ghi đè):
     # thiếu ≥ 2 đoạn so với kỳ vọng (pre+post)/SEG_S → ghi log, clip vẫn cắt (best effort).
     missing = (pre + post) // SEG_S - len(segs)
@@ -312,9 +308,7 @@ def cut_clip(cam, ts_frame, pre, post, out: Path, rec_dir="data/rec") -> bool:
     if missing >= 2:
         gap_log.parent.mkdir(parents=True, exist_ok=True)
         with open(gap_log, "a", newline="") as f:
-            csv.writer(f).writerow(
-                [time.strftime("%F %T"), cam, int(ts_frame), str(missing)]
-            )
+            csv.writer(f).writerow([time.strftime("%F %T"), cam, int(ts_frame), str(missing)])
     if not segs:
         return False
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -513,18 +507,14 @@ def feed():
             with open("data/metrics/ui_seen.csv", "a", newline="") as m:
                 csv.writer(m).writerow([a["alert_id"], f"{time.time():.3f}"])  # ts_ui
         with st.container(border=True):
-            st.write(
-                f"**{a['camera_id']}** · {a['event_type']} · {a['confidence']:.2f}"
-            )
+            st.write(f"**{a['camera_id']}** · {a['event_type']} · {a['confidence']:.2f}")
             clip = Path("data/clips") / a["camera_id"] / f"{a['alert_id']}.mp4"
             st.video(str(clip)) if clip.exists() else st.caption("Đang cắt clip…")
             c1, c2 = st.columns(2)
             for col, label in ((c1, "Đúng"), (c2, "Sai")):
                 if col.button(label, key=f"{a['alert_id']}_{label}"):
                     with open("data/reviews.csv", "a", newline="") as r:
-                        csv.writer(r).writerow(
-                            [a["alert_id"], label, f"{time.time():.3f}"]
-                        )
+                        csv.writer(r).writerow([a["alert_id"], label, f"{time.time():.3f}"])
 
 
 feed()
@@ -547,9 +537,7 @@ def supervise(procs: dict[str, dict], poll_s=2.0, restart_backoff_max=60):
     Ý nghĩa của "source": số restart được đếm riêng theo nguồn để tính uptime —
     lỗi do pilot KHÔNG tính vào uptime của Platform (xem mục 5.3)."""
     RESTART_LOG.parent.mkdir(parents=True, exist_ok=True)
-    info = {
-        n: {"p": None, "next_ok": 0.0, "backoff": 1.0, **v} for n, v in procs.items()
-    }
+    info = {n: {"p": None, "next_ok": 0.0, "backoff": 1.0, **v} for n, v in procs.items()}
     while True:
         for name, it in info.items():
             if it["p"] is None or it["p"].poll() is not None:

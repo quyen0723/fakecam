@@ -1,6 +1,6 @@
-# MediaMTX config — paths MUST match config/config.yaml cameras
-# (MediaMTX >= 1.21 rejects undeclared paths — playbook §1.4 rule 5).
-# Regenerate/extend when the camera list changes.
+# GENERATED from config/config.yaml by scripts/gen_mediamtx.py — do not edit by hand.
+# MediaMTX >= 1.21 rejects undeclared paths (playbook §1.4 rule 5).
+
 rtspAddress: 127.0.0.1:8554
 rtmpAddress: 127.0.0.1:1935
 hlsAddress: 127.0.0.1:8888

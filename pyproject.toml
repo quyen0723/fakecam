@@ -1,5 +1,16 @@
+[project]
+name = "fakecam"
+requires-python = ">=3.11"
+dependencies = [
+  "pyyaml>=6",
+  "opencv-python>=4.5.2",   # timeout props need >= 4.5.2 (playbook §1.4 rule 3)
+  "psutil>=5.9",
+  "pytest>=8",
+  "ruff>=0.4",
+]
+
 [tool.pytest.ini_options]
-rootdir = "."
 pythonpath = ["."]
+
 [tool.ruff]
 line-length = 100
