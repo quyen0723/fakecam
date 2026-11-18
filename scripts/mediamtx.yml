@@ -1,0 +1,12 @@
+# MediaMTX config — paths MUST match config/config.yaml cameras
+# (MediaMTX >= 1.21 rejects undeclared paths — playbook §1.4 rule 5).
+# Regenerate/extend when the camera list changes.
+rtspAddress: 127.0.0.1:8554
+rtmpAddress: 127.0.0.1:1935
+hlsAddress: 127.0.0.1:8888
+webrtcAddress: 127.0.0.1:8889
+paths:
+  live/cam01:
+  live/cam02:
+  live/cam03:
+  live/cam04:

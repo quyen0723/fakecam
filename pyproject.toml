@@ -1,0 +1,5 @@
+[tool.pytest.ini_options]
+rootdir = "."
+pythonpath = ["."]
+[tool.ruff]
+line-length = 100
