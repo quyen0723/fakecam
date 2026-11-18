@@ -35,19 +35,26 @@ def ffmpeg_count() -> int:
     return n
 
 
+def _hls_one(cfg: dict, cam: str) -> bool:
+    url = (
+        f"http://{cfg['rtsp_host']}:{cfg['hls_port']}"
+        f"/{cfg['rtsp_path'].format(cam=cam)}/index.m3u8"
+    )
+    try:
+        with urllib.request.urlopen(url, timeout=3) as r:
+            return r.status == 200
+    except OSError:
+        return False
+
+
 def hls_ok(cfg: dict) -> int:
-    ok = 0
-    for cam in cfg["cameras"]:
-        url = (
-            f"http://{cfg['rtsp_host']}:{cfg['hls_port']}"
-            f"/{cfg['rtsp_path'].format(cam=cam)}/index.m3u8"
-        )
-        try:
-            with urllib.request.urlopen(url, timeout=3) as r:
-                ok += r.status == 200
-        except OSError:
-            pass  # transient HLS error counts as a miss for this poll
-    return ok
+    """Reachable HLS playlists, one retry per camera.
+
+    Without an active browser reader MediaMTX tears the per-path muxer down
+    (on-demand), and a probe can hit the spin-up window with a transient 404
+    (observed 19/11: ffmpeg 4/4 but HLS 3/4). One retry filters that blip;
+    a really dead stream fails both attempts and still counts as missing."""
+    return sum(_hls_one(cfg, cam) or _hls_one(cfg, cam) for cam in cfg["cameras"])
 
 
 def main() -> None:
