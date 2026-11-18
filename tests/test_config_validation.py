@@ -8,6 +8,9 @@ from core.config import load
 BASE = {
     "rtsp_host": "127.0.0.1",
     "rtsp_port": 8554,
+    "hls_port": 8888,
+    "rtmp_port": 1935,
+    "webrtc_port": 8889,
     "rtsp_path": "live/{cam}",
     "cameras": ["cam01"],
     "pre": 10,
@@ -73,3 +76,5 @@ def test_mediamtx_render_lists_every_camera():
 
     out = render(dict(BASE))
     assert "live/cam01:" in out and "# GENERATED" in out
+    assert "hlsAddress: 127.0.0.1:8888" in out  # rendered from config, not hardcoded
+    assert "rtspAddress: 127.0.0.1:8554" in out

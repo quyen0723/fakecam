@@ -24,9 +24,9 @@ def render(cfg: dict) -> str:
     lines = [
         HEADER,
         f"rtspAddress: {cfg['rtsp_host']}:{cfg['rtsp_port']}",
-        f"rtmpAddress: {cfg['rtsp_host']}:1935",
-        f"hlsAddress: {cfg['rtsp_host']}:8888",
-        f"webrtcAddress: {cfg['rtsp_host']}:8889",
+        f"rtmpAddress: {cfg['rtsp_host']}:{cfg['rtmp_port']}",
+        f"hlsAddress: {cfg['rtsp_host']}:{cfg['hls_port']}",
+        f"webrtcAddress: {cfg['rtsp_host']}:{cfg['webrtc_port']}",
         "paths:",
     ]
     lines += [f"  {cfg['rtsp_path'].format(cam=cam)}:" for cam in cfg["cameras"]]

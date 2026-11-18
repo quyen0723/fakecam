@@ -20,8 +20,10 @@ def supervise(procs: dict[str, dict], poll_s: float = 2.0, backoff_max: float = 
     Blocks forever; Ctrl+C exits without killing children (supervisor ≠ terminator).
     """
     RESTART_LOG.parent.mkdir(parents=True, exist_ok=True)
-    info = {n: {"p": None, "next_ok": 0.0, "backoff": 1.0, "cmd": v["cmd"], "source": v["source"]}
-            for n, v in procs.items()}
+    info = {
+        n: {"p": None, "next_ok": 0.0, "backoff": 1.0, "cmd": v["cmd"], "source": v["source"]}
+        for n, v in procs.items()
+    }
     try:
         while True:
             time.sleep(poll_s)
@@ -34,8 +36,10 @@ def supervise(procs: dict[str, dict], poll_s: float = 2.0, backoff_max: float = 
                 if it["p"] is not None:  # died once — record (source-tagged, §5.3)
                     with open(RESTART_LOG, "a", newline="") as f:
                         csv.writer(f).writerow([f"{now:.0f}", name, it["source"], it["backoff"]])
-                    print(f"{name}: died, restart in {it['backoff']}s ({it['source']})",
-                          file=sys.stderr)
+                    print(
+                        f"{name}: died, restart in {it['backoff']}s ({it['source']})",
+                        file=sys.stderr,
+                    )
                     it["backoff"] = min(it["backoff"] * 2, backoff_max)
                     it["next_ok"] = now + it["backoff"]
                 it["p"] = subprocess.Popen(it["cmd"])
