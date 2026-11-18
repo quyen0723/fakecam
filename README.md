@@ -6,40 +6,40 @@ fire-detection PoC. Playbook: `docs/playbook_platform.md`. Code standard: `docs/
 ## Quick start (macOS / Linux)
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -e .        # editable install from pyproject
-pip install -e .                                            # or: python -m pip install -e .
-ffmpeg -y -i raw_sample.mp4 -vf fps=15 -c:v libx264 -g 15 -an videos/cam01.mp4   # normalize per spec
-# start MediaMTX (brew install mediamtx / apt):
-mediamtx scripts/mediamtx.yml &                             # config is GENERATED — see below
-python -m scripts.gen_mediamtx && mediamtx scripts/mediamtx.yml &
-python -m fakecam.run_fakecams                              # publishes all cameras, auto-restarts
-python -m scripts.read_smoke                                # reads every camera 2 s
-open scripts/multiview.html                                 # 4-up browser view (or http.server)
-python -m fakecam.run_fakecams stop                         # stops all publishers
+python3 -m venv .venv && .venv/bin/pip install -e .      # deps from pyproject
+.venv/bin/python -m scripts.gen_mediamtx                 # generate scripts/mediamtx.yml from config (never hand-edit)
+mediamtx scripts/mediamtx.yml &                          # brew/apt install; binds 127.0.0.1 only
+.venv/bin/python -m fakecam.run_fakecams                 # publishes all cameras, watchdog auto-restart
+.venv/bin/python -m scripts.read_smoke                   # verify: reads every camera 2 s
+(.venv/bin/python -m http.server 8800 --bind 127.0.0.1 &) ; open http://127.0.0.1:8800/scripts/multiview.html
+.venv/bin/python -m fakecam.run_fakecams stop            # stops all publishers (pid-guarded)
+```
+
+Normalize sample videos once (H.264 720p 15fps g=15 per playbook §1.3):
+```bash
+for f in videos/raw/*.mp4; do ffmpeg -y -i "$f" -vf fps=15 -c:v libx264 -preset veryfast -g 15 -an "videos/$(basename "${f%.*}").mp4"; done
+# then rename outputs to cam01.mp4 .. cam04.mp4 (order matches config.yaml cameras)
 ```
 
 ## Quick start (Windows)
 
 ```powershell
 # 1. deps: winget install Gyan.FFmpeg ; download mediamtx.exe (github.com/bluenviron/mediamtx)
-python -m venv .venv
-.venv\Scripts\pip install -e .
-# 2. normalize the 4 sample videos (downloads → videos/raw/):
+python -m venv .venv ; .venv\Scripts\pip install -e .
+# 2. normalize the 4 sample videos (files in videos\raw\):
 powershell -File scripts\prepare_videos.ps1
-# 3. generate + run (all paths from config.yaml):
+# 3. generate config, start mediamtx (PowerShell has no `&` → Start-Process):
 .venv\Scripts\python -m scripts.gen_mediamtx
-.\mediamtx.exe scripts\mediamtx.yml &
+Start-Process -NoNewWindow .\mediamtx.exe -ArgumentList "scripts\mediamtx.yml"
+# 4. run + verify:
 .venv\Scripts\python -m fakecam.run_fakecams
 .venv\Scripts\python -m scripts.read_smoke
 ```
 
-Notes: everything binds 127.0.0.1 only (CODE_STANDARD §7). `scripts/mediamtx.yml` is
-generated from `config/config.yaml` — do not edit by hand. `data/` and `videos/*.mp4`
-are gitignored.
+## Notes
 
-## TLS note (auto.crt/auto.key)
-
-`auto.crt` / `auto.key` are MediaMTX-generated per-machine TLS pairs — never committed,
-never copied between machines. The current PoC runs loopback without TLS, so any such
-files on disk are local leftovers; they regenerate automatically when a TLS listener
-is first needed (per CODE_STANDARD §8).
+- Everything binds 127.0.0.1 only (CODE_STANDARD §7). Open LAN ports only with a PR reason.
+- `scripts/mediamtx.yml` is generated from `config/config.yaml` — do not edit by hand.
+- Gitignored: `data/`, `videos/` (samples stay local; `.gitkeep` keeps the dir).
+- `auto.crt`/`auto.key` are MediaMTX per-machine TLS pairs — never committed, never copied
+  between machines; loopback PoC needs no TLS (see CODE_STANDARD §8).
