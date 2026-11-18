@@ -127,6 +127,8 @@ Quy tắc khi nạp config:
 3. **RTSP transport đặt tường minh**, không phụ thuộc mặc định của OpenCV: đặt
    `os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"` **trước `import cv2`** và dùng `-rtsp_transport tcp` cho mọi dòng lệnh FFmpeg. Đây là chọn cho nhất quán, không phải sửa lỗi UDP.
 4. Dùng `shutil.disk_usage` để lấy `% đĩa trống` cho chính sách đĩa của Clipper (mục 3.2) và `soak_monitor` (mục 5.2).
+5. **MediaMTX ≥ 1.21 yêu cầu khai báo path tường minh** (`paths:` trong config) — path không khai báo thì push bị từ chối ("Server returned 400 Bad Request", log: *path is not configured*; đã gặp thật khi dựng 4 camera 18/11). File `scripts/mediamtx.yml` sinh theo `config.yaml` — thêm/xoá camera là đổi cả hai. *(Bổ sung 18/11 sau khi dựng thành công.)*
+6. **Tin số liệu p95 chỉ sau phép đo drawtext** (mục 5.1): OpenCV `cap.read()` có thể trả frame từ buffer (hộp thử 18/11: stream 15 fps đọc ra ~25 frame/s) — FPS theo vòng loop không phải bằng tốc độ phát thật. Chạy phép đo watermark `drawtext` (20 mẫu, mục 5.1) trước khi tin `frame_latency.csv`. *(Bổ sung 18/11.)*
 
 ---
 
@@ -587,6 +589,7 @@ Supervisor giám sát: tiến trình phát camera giả (`run_fakecams.py`), rec
 | **Đầy đĩa** | Đoạn ghi và clip tăng mãi, lặp vòng video cháy sinh cảnh báo dồn dập | Dọn đoạn cũ hơn 10 phút; cooldown 30 giây ở pilot; giới hạn số clip giữ lại; giám sát dung lượng đĩa trong soak |
 | **Cắt clip sai hoặc ngắn** | Nén thông minh làm keyframe thưa; `-c copy` chỉ cắt tại keyframe | Chuẩn hóa video với `-g 15`; khi lắp camera thật phải kiểm tra khoảng keyframe |
 | **Windows khóa file** | Xóa đoạn đang được đọc bởi clipper | Bọc `try/except`, thử lại lần quét sau |
+| **Push bị MediaMTX từ chối (400)** | MediaMTX ≥ 1.21 đòi path khai báo tường minh; lỗi rơi ở FFmpeg publisher ("Server returned 400 Bad Request") | Sinh `mediamtx.yml` từ `config.yaml` (quy tắc 1.4.5); publisher retry có backoff như CameraReader |
 | **Streamlit giật, chạy lại cả trang** | Mỗi tương tác chạy lại toàn bộ script; quét thư mục lớn | `st.fragment(run_every=2)`; chỉ hiển thị 30 cảnh báo gần nhất; không phát khung hình trực tiếp qua Streamlit |
 | **Máy ngủ hoặc tự cập nhật trong 72 giờ** | Cài đặt nguồn và Windows Update | Tắt sleep, tắt tự khởi động lại; ghi nhận và loại khỏi số liệu uptime nếu xảy ra ngoài ý muốn |
 | **Cảnh báo giả do vòng lặp video** | Điểm nối giật hình tạo chuyển động | Cắt video sao cho đầu và cuối khớp, hoặc đánh dấu vùng nối khi chấm |
