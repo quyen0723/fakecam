@@ -18,6 +18,7 @@ from core.config import load
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "data" / "metrics" / "soak_lite.csv"
+OUT = OUT.with_name("soak_lite_" + time.strftime("%Y%m%d_%H%M%S") + ".csv")
 
 
 def ffmpeg_count() -> int:
@@ -37,8 +38,10 @@ def ffmpeg_count() -> int:
 def hls_ok(cfg: dict) -> int:
     ok = 0
     for cam in cfg["cameras"]:
-        url = (f"http://{cfg['rtsp_host']}:{cfg['hls_port']}"
-               f"/{cfg['rtsp_path'].format(cam=cam)}/index.m3u8")
+        url = (
+            f"http://{cfg['rtsp_host']}:{cfg['hls_port']}"
+            f"/{cfg['rtsp_path'].format(cam=cam)}/index.m3u8"
+        )
         try:
             with urllib.request.urlopen(url, timeout=3) as r:
                 ok += r.status == 200
@@ -48,7 +51,12 @@ def hls_ok(cfg: dict) -> int:
 
 
 def main() -> None:
-    minutes = float(sys.argv[1]) if len(sys.argv) > 1 else 60.0
+    try:
+        minutes = float(sys.argv[1]) if len(sys.argv) > 1 else 60.0
+    except ValueError as e:
+        raise SystemExit(f"minutes must be a number: {e}")
+    if minutes <= 0:
+        raise SystemExit(f"minutes must be > 0, got {minutes}")
     cfg = load(str(ROOT / "config" / "config.yaml"))
     OUT.parent.mkdir(parents=True, exist_ok=True)
     end = time.time() + minutes * 60
@@ -57,7 +65,15 @@ def main() -> None:
         w = csv.writer(f)
         w.writerow(["ts", "ffmpeg_count", "hls_ok"])
         while time.time() < end:
-            n, h = ffmpeg_count(), hls_ok(cfg)
+            try:
+                n, h = ffmpeg_count(), hls_ok(cfg)
+            except Exception as e:  # noqa: BLE001 — monitor must SURVIVE, evidence first
+                w.writerow([f"{time.time():.0f}", "ERR", repr(e)[:120]])
+                f.flush()
+                bad += 1  # a crashed poll counts as an anomaly — never silently skipped
+                polls += 1
+                time.sleep(30)
+                continue
             w.writerow([f"{time.time():.0f}", n, h])
             f.flush()
             if n < 4 or h < 4:
@@ -67,7 +83,9 @@ def main() -> None:
     # Poll-level report: anomalies = polls where any camera was missing/below spec
     uptime = 100 * (polls - bad) / max(polls, 1)
     verdict = "PASS" if bad == 0 else ("PASS-WITH-GAPS" if uptime >= 95 else "FAIL")
-    print(f"soak {minutes:.0f} min: {polls} polls, {bad} anomalies, uptime {uptime:.1f}% → {verdict}")
+    print(
+        f"soak {minutes:.0f} min: {polls} polls, {bad} anomalies, uptime {uptime:.1f}% → {verdict}"
+    )
 
 
 if __name__ == "__main__":
