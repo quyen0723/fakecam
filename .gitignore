@@ -1,5 +1,6 @@
 data/
-videos/*.mp4
+videos/
+!videos/.gitkeep
 __pycache__/
 *.pyc
 .venv/
