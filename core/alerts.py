@@ -11,11 +11,13 @@ import time
 from pathlib import Path
 from typing import Any
 
+from core.contract import AlertDraft, FrameMeta
+
 _last: dict[tuple, float] = {}  # (event_type, camera_id) -> ts of last accepted alert
 
 
 def emit_alert(
-    d: Any, meta: Any, pilot_name: str, root: str = "data/alerts", cooldown_s: int = 30
+    d: AlertDraft, meta: FrameMeta, pilot_name: str, root: str = "data/alerts", cooldown_s: int = 30
 ) -> dict[str, Any] | None:
     """Write AlertDraft to disk atomically. None if within cooldown window."""
     now = time.time()
