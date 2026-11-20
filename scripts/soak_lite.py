@@ -37,8 +37,7 @@ def ffmpeg_count() -> int:
 
 def _hls_one(cfg: dict, cam: str) -> bool:
     url = (
-        f"http://{cfg['rtsp_host']}:{cfg['hls_port']}"
-        f"/{cfg['rtsp_path'].format(cam=cam)}/index.m3u8"
+        f"http://{cfg['rtsp_host']}:{cfg['hls_port']}/{cfg['rtsp_path'].format(cam=cam)}/index.m3u8"
     )
     try:
         with urllib.request.urlopen(url, timeout=3) as r:

@@ -22,14 +22,25 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def load_pilot(name: str):
-    """Import pilots.<name> by name; pilot teams ship self-registering classes."""
+    """Import pilots.<name>; the pilot class is found by capability, not name.
+
+    Report §2 asked teams to name classes themselves (e.g. FirePilot) — so we duck-type:
+    first class in the module with setup() + on_frame() wins. Keeps the contract open.
+    """
     import importlib
+    import inspect
 
     if name == "dummy":
         from pilots.dummy import DummyPilot
 
         return DummyPilot()
-    return importlib.import_module(f"pilots.{name}").Pilot()
+    mod = importlib.import_module(f"pilots.{name}")
+    for _, obj in inspect.getmembers(mod, inspect.isclass):
+        # capability-based only: contract types (AlertDraft/FrameMeta) lack on_frame,
+        # so nothing else can qualify — no module-identity guard needed (test I1).
+        if not obj.__name__.startswith("_") and all(hasattr(obj, m) for m in ("setup", "on_frame")):
+            return obj()
+    raise ValueError(f"no pilot class with setup/on_frame in pilots.{name}")
 
 
 def main() -> None:
